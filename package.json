@@ -1,0 +1,22 @@
+{
+  "name": "font-texture-generator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mapbox/tiny-sdf": "^2.0.6",
+    "@preact/signals": "^1.3.0",
+    "classnames": "^2.5.1",
+    "preact": "^10.23.1",
+    "preact-router": "^4.1.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.0",
+    "vite": "^5.4.0"
+  }
+}
