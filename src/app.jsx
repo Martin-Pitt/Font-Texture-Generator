@@ -819,27 +819,13 @@ function FontTexture() {
 // Convert character into an integer lookup index
 integer GlyphIndex(string char)
 {
-${(() => {
-	let condition = Characters.map((glyph, index) => {
-		if(glyph == '"') glyph = '\\"';
-		else if(glyph == '\\') glyph = '\\\\';
-		return `if(char == "${glyph}") return ${index};`
-	});
-	let lines = [];
-	for(let iterator = 0; iterator < condition.length;)
-	{
-		let line = [
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-		].filter(Boolean);
-		lines.push(`\t${line.join(' ')}`);
-	}
-	return lines.join('\n');
-})()}
-	return -1;
+	return llSubStringIndex("${
+		Characters.map((glyph, index) => {
+			if(glyph == '"') glyph = '\\"';
+			else if(glyph == '\\') glyph = '\\\\';
+			return glyph;
+		}).join('')
+	}", char);
 }
 
 // Get specs for a glyph: <width, left gap, and right gap>
