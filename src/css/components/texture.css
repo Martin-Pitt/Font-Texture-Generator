@@ -1,12 +1,14 @@
 .texture {
-    --check-a: lch(0 0 0 / 10%);
-    --check-b: lch(100 0 0 / 10%);
+    aspect-ratio: 1;
+    width: 512px;
+    --check-a: lch(0 0 0 / 5%);
+    --check-b: lch(50 0 0 / 10%);
     background: conic-gradient(
         var(--check-a) 90deg,
         var(--check-b) 90deg 180deg,
         var(--check-a) 180deg 270deg,
         var(--check-b) 270deg
     );
-    background-size: 64px 64px;
+    background-size: 16px 16px;
     box-shadow: 0px 2px 4px lch(0 0 0 / 40%);
 }
