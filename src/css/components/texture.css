@@ -1,8 +1,8 @@
 .texture {
     aspect-ratio: 1;
     width: 512px;
-    --check-a: lch(0 0 0 / 5%);
-    --check-b: lch(50 0 0 / 10%);
+    --check-a: lch(0 0 0 / 4%);
+    --check-b: lch(50 0 0 / 4%);
     background: conic-gradient(
         var(--check-a) 90deg,
         var(--check-b) 90deg 180deg,

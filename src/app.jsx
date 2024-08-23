@@ -522,81 +522,14 @@ function FontTexture() {
 				let nextGap = columnWidth - 3;
 				if(nextChar && glyphData[nextChar]) nextGap -= glyphData[nextChar].width / 2;
 				
-				
 				glyphData[char].leftGap = prevGap;
 				glyphData[char].rightGap = nextGap;
 			}
 		}
 		
 		
-		/*
-		// Debug overlays
-		// Cell Edges
-		for(let b = 1; b < ROWS; ++b)
-		{
-			let y = CELL_SIZE * b;
-			ctx.strokeStyle = 'green';
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.moveTo(0, y);
-			ctx.lineTo(TEXTURE_SIZE, y);
-			ctx.stroke();
-		}
 		
-		// Baselines
-		// for(let b = 0; b < ROWS; ++b)
-		// {
-		// 	let y = CELL_SIZE * b;
-		// 	ctx.strokeStyle = 'green';
-		// 	ctx.lineWidth = 2;
-		// 	ctx.beginPath();
-		// 	ctx.moveTo(0, y + CELL_SIZE * 0.75);
-		// 	ctx.lineTo(TEXTURE_SIZE, y + CELL_SIZE * 0.75);
-		// 	ctx.stroke();
-		// }
 		
-		for(let a = 0; a < columns; ++a)
-		{
-			let x = columnWidth * 0.5 + columnWidth * a;
-			// let x = CELL_SIZE/2 + columnWidth * a;
-			
-			ctx.strokeStyle = 'red';
-			ctx.lineWidth = 1;
-			ctx.beginPath();
-			ctx.moveTo(x, 0);
-			ctx.lineTo(x, TEXTURE_SIZE);
-			ctx.stroke();
-			
-			// for(let b = 0; b < ROWS; ++b)
-			// {
-			// 	let y = CELL_SIZE * b;
-				
-			// 	let index = b + a * ROWS;
-			// 	let char = Characters[index];
-			// 	if(!char) continue;
-				
-			// 	ctx.strokeStyle = 'lch(50 100 30)';
-			// 	ctx.lineWidth = 1;
-			// 	ctx.beginPath();
-			// 	ctx.rect(x + 0.5, y + 0.5, Math.ceil(glyphData[char].width), CELL_SIZE - 1);
-			// 	ctx.stroke();
-			// }
-		}
-		//*/
-		
-		/*
-		// Draw baseline
-		for(let b = 0; b < ROWS; ++b)
-		{
-			let y = CELL_SIZE * b;
-			ctx.strokeStyle = 'green';
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.moveTo(0, y + CELL_SIZE * 0.75);
-			ctx.lineTo(TEXTURE_SIZE, y + CELL_SIZE * 0.75);
-			ctx.stroke();
-		}
-		//*/
 		
 		
 		// Render them in a grid
@@ -752,6 +685,94 @@ function FontTexture() {
 		}
 		
 		
+		
+		
+		
+		
+		/*
+		// Debug overlays
+		// Cell Edges
+		// for(let b = 1; b < ROWS; ++b)
+		// {
+		// 	let y = CELL_SIZE * b;
+		// 	ctx.strokeStyle = 'green';
+		// 	ctx.lineWidth = 2;
+		// 	ctx.beginPath();
+		// 	ctx.moveTo(0, y);
+		// 	ctx.lineTo(TEXTURE_SIZE, y);
+		// 	ctx.stroke();
+		// }
+		
+		// Baselines
+		// for(let b = 0; b < ROWS; ++b)
+		// {
+		// 	let y = CELL_SIZE * b;
+		// 	ctx.strokeStyle = 'green';
+		// 	ctx.lineWidth = 2;
+		// 	ctx.beginPath();
+		// 	ctx.moveTo(0, y + CELL_SIZE * 0.75);
+		// 	ctx.lineTo(TEXTURE_SIZE, y + CELL_SIZE * 0.75);
+		// 	ctx.stroke();
+		// }
+		
+		for(let a = 0; a < columns; ++a)
+		{
+			let x = columnWidth * 0.5 + columnWidth * a;
+			
+			// Glyph/column centerline
+			ctx.strokeStyle = 'red';
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo(x, 0);
+			ctx.lineTo(x, TEXTURE_SIZE);
+			ctx.stroke();
+			
+			
+			for(let b = 0; b < ROWS; ++b)
+			{
+				let y = CELL_SIZE * b;
+				
+				let index = b + a * ROWS;
+				let char = Characters[index];
+				if(!char) continue;
+				
+				// if(char != "@") continue;
+				
+				ctx.strokeStyle = 'lch(50 0 30)';
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.rect(x + 0.5 - glyphData[char].width / 2, y + 0.5, Math.ceil(glyphData[char].width), CELL_SIZE - 1);
+				ctx.stroke();
+				
+				
+				ctx.lineWidth = 2.0;
+				ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 135)';
+				ctx.beginPath();
+				ctx.rect(x - 3, y + CELL_SIZE/2.5 - 3, 6, 6);
+				ctx.fill();
+				ctx.moveTo(x, y + CELL_SIZE/2.5);
+				ctx.lineTo(x + glyphData[char].rightGap, y + CELL_SIZE/2.5);
+				ctx.stroke();
+				
+				
+				ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 215)';
+				ctx.beginPath();
+				ctx.rect(x - 3, y + CELL_SIZE/1.5 - 3, 6, 6);
+				ctx.fill();
+				ctx.moveTo(x, y + CELL_SIZE/1.5);
+				ctx.lineTo(x - glyphData[char].leftGap, y + CELL_SIZE/1.5);
+				ctx.stroke();
+			}
+		}
+		//*/
+		
+		
+		
+		
+		
+		
+		
+		
 		/*
 		// Check gaps
 		for(let a = 0; a < columns; ++a)
@@ -832,6 +853,20 @@ integer GlyphIndex(string char)
 // Gap is the amount of available transparent space around the glyph
 vector GlyphSpec(integer index)
 {
+${(() => {
+	if(!Characters.includes('0')) return;
+	let maxWidth = 0, minLeft = columnWidth, minRight = columnWidth;
+	for(let char of '012345689')
+	{
+		maxWidth = Math.max(maxWidth, glyphData[char].width);
+		minLeft = Math.min(minLeft, glyphData[char].leftGap);
+		minRight = Math.min(minRight, glyphData[char].rightGap);
+	}
+	let width = Math.max(25, maxWidth); // Should be width of an EN whitespace or widest figure
+	let startIndex = Characters.indexOf('0');
+	let endIndex = Characters.indexOf('9');
+	return `\tif(TabularFigures && ${startIndex} <= index && index <= ${endIndex}) return <${+width.toFixed(7)}, ${+minLeft.toFixed(7)}, ${+minRight.toFixed(7)}>;`
+})()}
 ${(() => {
 	let condition = Characters.map((glyph, index) => {
 		let data = glyphData[glyph];
@@ -1009,14 +1044,16 @@ const fontLoaded = signal(false);
 
 export function App() {
 	useEffect(() => {
-		document.fonts.load(`400 ${FONT_SIZE}px Inter, sans-serif`).then(() => {
+		Promise.all([
+			document.fonts.load(`400 ${FONT_SIZE}px Inter, sans-serif`),
+			document.fonts.load(`400 ${FONT_SIZE}px Dragon, sans-serif`),
+			document.fonts.load(`400 ${FONT_SIZE}px Dwemer, sans-serif`),
+			document.fonts.load(`400 ${FONT_SIZE}px Falmer, sans-serif`),
+			document.fonts.load(`400 ${FONT_SIZE}px Oblivion, sans-serif`),
+			document.fonts.load(`400 ${FONT_SIZE}px Oblivion Worn, sans-serif`),
+		]).then(() => {
 			fontLoaded.value = true;
 		});
-		
-		// let font = new FontFace('Inter', `url('../fonts/Inter-VariableFont_opsz,wght.ttf')`)
-		// font.load().ready.then(() => {
-		// 	fontLoaded.value = true;
-		// });
 	}, []);
 	
 	if(!fontLoaded.value) return null;
