@@ -423,25 +423,37 @@ Characters = Array.from(Characters);
 
 
 
-/*
-vector Glyphs(string Glyph) {
-    if(Glyph == "?") return <glyphX, glyphY, textureIndex.glyphWidth>;
-	return <0,0,0>;
-*/
-
-let glyphData = {};
+let data = {};
 
 const TEXTURE_SIZE = 2048;
 const TEXTURE_WIDTH = TEXTURE_SIZE;
 const TEXTURE_HEIGHT = TEXTURE_SIZE;
 const FONT_SIZE = 40;
 const CELL_SIZE = 64;
+const FONT = `400 ${FONT_SIZE}px Inter, sans-serif`;
 const ROWS = TEXTURE_SIZE / CELL_SIZE;
 let whitespace;
-let widestWidth = 0;
+// let widestWidth = 0;
 let columns = 0;
 let columnWidth = 0;
-let gapWidth = 0;
+
+
+// Default — White transparent on transparent background
+const MODE = 'TRANSPARENT';
+const BACK_COLOR = 'transparent';
+const TEXT_COLOR = 'lch(100 0 0)';
+
+// Light mode
+// const MODE = 'LIGHT';
+// const BACK_COLOR = '#ffffff';
+// const TEXT_COLOR = '#262626';
+
+// Dark mode
+// const MODE = 'DARK';
+// const BACK_COLOR = '#080808';
+// const TEXT_COLOR = '#e5e5e5';
+
+
 
 
 function FontTexture() {
@@ -455,8 +467,9 @@ function FontTexture() {
 		const ctx = root.current.getContext('2d', { willReadFrequently: true });
 		
 		// Font settings
-		ctx.fillStyle = 'lch(100 0 0)';
-		ctx.font = `400 ${FONT_SIZE}px Inter, sans-serif`;
+		ctx.fillStyle = TEXT_COLOR;
+		ctx.textAlign = 'center';
+		ctx.font = FONT;
 		ctx.textBaseline = 'baseline';
 		whitespace = {
 			' ': ctx.measureText(' ').width, // Space
@@ -471,24 +484,6 @@ function FontTexture() {
 			' ': ctx.measureText(' ').width, // Hair Space
 		};
 		
-		// Measure each glyph
-		widestWidth = 0;
-		for(let char of Characters)
-		{
-			let metrics = ctx.measureText(char);
-			// glyphData[char] = [0, 0, metrics.width, 0, 0];
-			glyphData[char] = {
-				cx: 0,
-				cy: 0,
-				width: metrics.width,
-				leftGap: 0,
-				rightGap: 0,
-			};
-			console.assert(metrics.width > 0, 'Glyph has no width', char, 'U+' + char.codePointAt(0).toString(16), metrics);
-			// console.assert(metrics.width < CELL_SIZE, 'Glyph out of bounds error', char, glyphData[char].width);
-			if(metrics.width > widestWidth) widestWidth = metrics.width;
-		}
-		
 		
 		/*
 		// Tweak based on widest glyph
@@ -499,9 +494,142 @@ function FontTexture() {
 		columns = 11;
 		//*/
 		columnWidth = TEXTURE_WIDTH / columns;
-		gapWidth = columnWidth - widestWidth;
 		
 		
+		// Measure and draw each glyph
+		let index = 0;
+		// widestWidth = 0;
+		for(let char of Characters)
+		{
+			// Compute metrics
+			let metrics = ctx.measureText(char);
+			
+			let a = Math.floor(index / ROWS);
+			let b = index % ROWS;
+			
+			let x = columnWidth * 0.5 + columnWidth * a;
+			let y = CELL_SIZE * b;
+			
+			let baseline = y + CELL_SIZE * 0.75;
+			let width = metrics.width;
+			let halfwidth = width/2;
+			let height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+			let halfheight = height/2;
+			let top = baseline - metrics.actualBoundingBoxAscent;
+			let bottom = baseline + metrics.actualBoundingBoxDescent;
+			let left = x - width/2;
+			let right = x + width/2;
+			
+			
+			// Start rendering
+			ctx.save();
+			
+			// If there is a back color we draw a background around the glyph
+			// Having a background allows the texture to be rendered softly with anti-aliasing
+			// Avoiding the issues around alpha masking causing legibility issues
+			if(BACK_COLOR != 'transparent')
+			{
+				// Clip to the glyph edges + a little horizontal/vertical padding
+				ctx.beginPath();
+				// ctx.rect(left - 1, top - 1, width + 2, height + 2);
+				// ctx.rect(Math.floor(left) - 1, Math.floor(top) - 3, Math.ceil(width) + 2, Math.ceil(height) + 6);
+				ctx.rect(Math.floor(left) - 0.5, Math.floor(top) - 2.5, Math.ceil(width) + 1, Math.ceil(height) + 4);
+				ctx.clip();
+				
+				// Fill in a larger rect around with the background color
+				ctx.fillStyle = BACK_COLOR;
+				ctx.fillRect(x - CELL_SIZE/(2/1.5), y, CELL_SIZE*1.5, CELL_SIZE);
+			}
+			
+			
+			ctx.fillStyle = TEXT_COLOR;
+			ctx.fillText(char, x, baseline);
+			
+			// ctx.strokeStyle = 'lch(0 0 0)';
+			// ctx.strokeRect(x - halfwidth, top, width, height);
+			
+			
+			ctx.restore();
+			// End rendering
+			
+			
+			
+			// TODO: Fix this
+			// Try to confirm whether this is a colorized/greyscale glyph or a black/white letterform
+			let isColorized = false;
+			// let imageData = ctx.getImageData(x - CELL_SIZE/2, y, CELL_SIZE, CELL_SIZE);
+			// for(let i = 0; i < imageData.data.length; i += 4)
+			// {
+			// 	let [r, g, b, a] = imageData.data.slice(i, i + 3);
+				
+			// 	// let l = (r + g + b) / 7.68;
+			// 	// if(l < 1 || l > 99) continue; // black or white
+				
+			// 	isColorized = true;
+			// 	break;
+			// }
+			
+			if(isColorized)
+			{
+				let rx = x - CELL_SIZE * 0.75;
+				let ry = y + 2;
+				let rw = CELL_SIZE * 1.5;
+				let rh = CELL_SIZE;
+				
+				ctx.strokeStyle = 'lch(80 80 215)';
+				ctx.strokeRect(rx + 2, ry + 2, rw - 4, rh - 4);
+				
+				ColorizedGlyphs.add(char);
+				ColorizedRects.push([rx, ry, rw, rh]);
+			}
+			
+			else
+			{
+				// let rx = x - CELL_SIZE * 0.75
+				// let ry = y + 2;
+				// let rw = CELL_SIZE * 1.5;
+				// let rh = CELL_SIZE;
+				// ctx.strokeStyle = 'lch(60 80 30)';
+				// ctx.strokeRect(rx + 2, ry + 2, rw - 4, rh - 4);
+				// UncoloredRects.push([rx, ry, rw, rh])
+				// UncoloredRects.push([left, top, width, height]);
+				UncoloredRects.push([Math.floor(left), Math.floor(top), Math.ceil(width), Math.ceil(height)]);
+			}
+			
+			
+			
+			
+			// Save all the relevant metrics
+			data[char] = {
+				baseline,
+				width,
+				halfwidth,
+				height,
+				halfheight,
+				top,
+				bottom,
+				left,
+				right,
+				
+				isColorized,
+				
+				textureX: x - TEXTURE_WIDTH/2,
+				textureY: 1 - ((y + CELL_SIZE/2) - TEXTURE_HEIGHT/2),
+				
+				// To be computed in another pass
+				leftGap: 0,
+				rightGap: 0,
+			};
+			console.assert(metrics.width > 0, 'Glyph has no width', char, 'U+' + char.codePointAt(0).toString(16), metrics);
+			// console.assert(metrics.width < CELL_SIZE, 'Glyph out of bounds error', char, data[char].width);
+			// if(metrics.width > widestWidth) widestWidth = metrics.width;
+			
+			index++;
+		}
+		
+		
+		// Pass to compute the left/right gaps
+		const GAP_MARGIN = 3;
 		for(let a = 0; a < columns; ++a)
 		{
 			// let x = columnWidth * 0.5 + columnWidth * a;
@@ -514,173 +642,16 @@ function FontTexture() {
 				
 				let prevColumn = (columns + (a - 1)) % columns;
 				let prevChar = Characters[b + prevColumn * ROWS];
-				let prevGap = columnWidth - 3;
-				if(prevChar && glyphData[prevChar]) prevGap -= glyphData[prevChar].width / 2;
+				let prevGap = columnWidth - GAP_MARGIN;
+				if(prevChar && data[prevChar]) prevGap -= data[prevChar].halfwidth;
 				
 				let nextColumn = (a + 1) % columns;
 				let nextChar = Characters[b + nextColumn * ROWS];
-				let nextGap = columnWidth - 3;
-				if(nextChar && glyphData[nextChar]) nextGap -= glyphData[nextChar].width / 2;
+				let nextGap = columnWidth - GAP_MARGIN;
+				if(nextChar && data[nextChar]) nextGap -= data[nextChar].halfwidth;
 				
-				glyphData[char].leftGap = prevGap;
-				glyphData[char].rightGap = nextGap;
-			}
-		}
-		
-		
-		
-		
-		
-		
-		// Render them in a grid
-		for(let a = 0; a < columns; ++a)
-		{
-			let x = columnWidth * 0.5 + columnWidth * a;
-			// let x = CELL_SIZE/2 + columnWidth * a;
-			for(let b = 0; b < ROWS; ++b)
-			{
-				let y = CELL_SIZE * b;
-				let index = b + a * ROWS;
-				let char = Characters[index];
-				if(!char) continue;
-				
-				
-				//*
-				
-				ctx.save();
-				ctx.textAlign = 'center';
-				ctx.fillStyle = 'lch(100 0 0)';
-				ctx.font = `${400} ${FONT_SIZE}px Inter, sans-serif`;
-				ctx.fillText(char, x, y + CELL_SIZE * 0.75);
-				ctx.restore();
-				
-				/*/
-				
-				ctx.save();
-				// ctx.beginPath();
-				// ctx.rect(x, y, CELL_SIZE, CELL_SIZE);
-				// ctx.clip();
-				ctx.globalCompositeOperation = 'lighter';
-				ctx.fillStyle = 'lch(100 0 0 / 5.6%)';
-				for(let w = 100; w <= 900; w += 50)
-				{
-					ctx.font = `${w} ${FONT_SIZE}px Inter, sans-serif`;
-					ctx.fillText(char, x, y + CELL_SIZE * 0.75);
-				}
-				ctx.restore();
-				//*/
-				
-				
-				
-				let isColorized = false;
-				let imageData = ctx.getImageData(x - CELL_SIZE/2, y, CELL_SIZE, CELL_SIZE);
-				for(let i = 0; i < imageData.data.length; i += 4)
-				{
-					let [r, g, b, a] = imageData.data.slice(i, i + 3);
-					let l = (r + g + b) / 7.68;
-					if(l < 1 || l > 99) continue; // black or white
-					isColorized = true;
-					break;
-				}
-				
-				if(isColorized)
-				{
-					// ctx.strokeStyle = 'lch(80 80 215)';
-					// ctx.beginPath();
-					// ctx.rect(x + 2 - CELL_SIZE/2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
-					// ctx.rect(x - CELL_SIZE * 0.75, y + 2, CELL_SIZE * 1.5, CELL_SIZE);
-					// ctx.stroke();
-					
-					ColorizedGlyphs.add(char);
-					ColorizedRects.push([
-						x - CELL_SIZE * 0.75, y + 2,
-						CELL_SIZE * 1.5, CELL_SIZE
-					]);
-				}
-				
-				else
-				{
-					UncoloredRects.push([
-						x - CELL_SIZE * 0.75, y + 2,
-						CELL_SIZE * 1.5, CELL_SIZE
-					])
-				}
-				
-				
-				
-				
-				/*
-				console.groupCollapsed(char);
-				
-				let imageData = ctx.getImageData(x - CELL_SIZE/2, y, CELL_SIZE, CELL_SIZE);
-				let isColorized = false;
-				for(let i = 0; i < imageData.data.length; i += 4)
-				{
-					let color = [
-						imageData.data[i + 0],
-						imageData.data[i + 1],
-						imageData.data[i + 2],
-					];
-					
-					// if(imageData.data[i + 0] <= 10) continue;
-					// if(imageData.data[i + 1] <= 10) continue;
-					// if(imageData.data[i + 2] <= 10) continue;
-					if(imageData.data[i + 3] <= 200) continue;
-					
-					let d = dot(normalize(color), normalize([1,1,1]));
-					console.log(d);
-					
-					
-					if(d < 1.0)
-					{
-						isColorized = true;
-						break;
-					}
-					
-					// if(d < 0.5)
-					// {
-					// 	isColorized = true;
-					// 	console.log(color, dir, d);
-					// 	break;
-					// }
-				}
-				
-				console.groupEnd();
-				
-				
-				if(!isColorized)
-				{
-					// console.log(char);
-					
-					for(let i = 0; i < imageData.data.length; i += 4)
-					{
-						imageData.data[i + 0] = 0;
-						imageData.data[i + 1] = 255;
-						imageData.data[i + 2] = 0;
-					}
-					ctx.putImageData(imageData, x - CELL_SIZE/2, y);
-				}
-				*/
-				
-				// ctx.fillStyle = 'lch(70 100 0 / 70%)';
-				// ctx.fillText(char + char + char + char, x + 100, y + CELL_SIZE * 0.75);
-				
-				// ctx.fillStyle = 'lch(70 100 215 / 70%)';
-				// ctx.fillText(char, x + 100, y + CELL_SIZE * 0.75);
-				// ctx.fillText(char, x + 100 + metrics.width, y + CELL_SIZE * 0.75);
-				// ctx.fillText(char, x + 100 + metrics.width*2, y + CELL_SIZE * 0.75);
-				// ctx.fillText(char, x + 100 + metrics.width*3, y + CELL_SIZE * 0.75);
-				
-				// let tx = (-0.5 + 1/8) + (1/4) * a;
-				// let ty = (-0.5 + 1/64) + (1/32) * b;
-				
-				// let tx = -(0.5 - (1 / columns) * a);// + (1 / CELL_SIZE); // Need to dynamically: 1/(64-48+64)
-				// let ty = 0.5 - (1 / ROWS) * b - (1 / CELL_SIZE);
-				
-				let cx = x - TEXTURE_WIDTH/2; // (x + glyphData[char].width/2) - TEXTURE_WIDTH/2;
-				let cy = (y + CELL_SIZE/2) - TEXTURE_HEIGHT/2;
-				glyphData[char].x = cx;
-				glyphData[char].y = 1 - cy;
+				data[char].leftGap = prevGap;
+				data[char].rightGap = nextGap;
 			}
 		}
 		
@@ -704,28 +675,28 @@ function FontTexture() {
 		// }
 		
 		// Baselines
-		// for(let b = 0; b < ROWS; ++b)
-		// {
-		// 	let y = CELL_SIZE * b;
-		// 	ctx.strokeStyle = 'green';
-		// 	ctx.lineWidth = 2;
-		// 	ctx.beginPath();
-		// 	ctx.moveTo(0, y + CELL_SIZE * 0.75);
-		// 	ctx.lineTo(TEXTURE_SIZE, y + CELL_SIZE * 0.75);
-		// 	ctx.stroke();
-		// }
+		for(let b = 0; b < ROWS; ++b)
+		{
+			let y = CELL_SIZE * b;
+			ctx.strokeStyle = 'green';
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(0, y + CELL_SIZE * 0.75);
+			ctx.lineTo(TEXTURE_SIZE, y + CELL_SIZE * 0.75);
+			ctx.stroke();
+		}
 		
 		for(let a = 0; a < columns; ++a)
 		{
 			let x = columnWidth * 0.5 + columnWidth * a;
 			
 			// Glyph/column centerline
-			ctx.strokeStyle = 'red';
-			ctx.lineWidth = 1;
-			ctx.beginPath();
-			ctx.moveTo(x, 0);
-			ctx.lineTo(x, TEXTURE_SIZE);
-			ctx.stroke();
+			// ctx.strokeStyle = 'red';
+			// ctx.lineWidth = 1;
+			// ctx.beginPath();
+			// ctx.moveTo(x, 0);
+			// ctx.lineTo(x, TEXTURE_SIZE);
+			// ctx.stroke();
 			
 			
 			for(let b = 0; b < ROWS; ++b)
@@ -736,32 +707,33 @@ function FontTexture() {
 				let char = Characters[index];
 				if(!char) continue;
 				
-				// if(char != "@") continue;
+				// Box around glyph cell
+				// ctx.strokeStyle = 'lch(50 0 30)';
+				// ctx.lineWidth = 1;
+				// ctx.beginPath();
+				// ctx.rect(x + 0.5 - data[char].width / 2, y + 0.5, Math.ceil(data[char].width), CELL_SIZE - 1);
+				// ctx.stroke();
 				
-				ctx.strokeStyle = 'lch(50 0 30)';
-				ctx.lineWidth = 1;
-				ctx.beginPath();
-				ctx.rect(x + 0.5 - glyphData[char].width / 2, y + 0.5, Math.ceil(glyphData[char].width), CELL_SIZE - 1);
-				ctx.stroke();
+				// Render right gap
+				// ctx.lineWidth = 2.0;
+				// ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 135)';
+				// ctx.beginPath();
+				// ctx.rect(x - 3, y + CELL_SIZE/2.5 - 3, 6, 6);
+				// ctx.fill();
+				// ctx.moveTo(x, y + CELL_SIZE/2.5);
+				// ctx.lineTo(x + data[char].rightGap, y + CELL_SIZE/2.5);
+				// ctx.stroke();
 				
 				
-				ctx.lineWidth = 2.0;
-				ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 135)';
-				ctx.beginPath();
-				ctx.rect(x - 3, y + CELL_SIZE/2.5 - 3, 6, 6);
-				ctx.fill();
-				ctx.moveTo(x, y + CELL_SIZE/2.5);
-				ctx.lineTo(x + glyphData[char].rightGap, y + CELL_SIZE/2.5);
-				ctx.stroke();
-				
-				
-				ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 215)';
-				ctx.beginPath();
-				ctx.rect(x - 3, y + CELL_SIZE/1.5 - 3, 6, 6);
-				ctx.fill();
-				ctx.moveTo(x, y + CELL_SIZE/1.5);
-				ctx.lineTo(x - glyphData[char].leftGap, y + CELL_SIZE/1.5);
-				ctx.stroke();
+				// Render left gap
+				// ctx.lineWidth = 2.0;
+				// ctx.fillStyle = ctx.strokeStyle = 'lch(50 100 215)';
+				// ctx.beginPath();
+				// ctx.rect(x - 3, y + CELL_SIZE/1.5 - 3, 6, 6);
+				// ctx.fill();
+				// ctx.moveTo(x, y + CELL_SIZE/1.5);
+				// ctx.lineTo(x - data[char].leftGap, y + CELL_SIZE/1.5);
+				// ctx.stroke();
 			}
 		}
 		//*/
@@ -786,9 +758,9 @@ function FontTexture() {
 				
 				let char = Characters[index];
 				if(!char) continue;
-				let width = glyphData[char].width;
-				let prevGap = glyphData[char].leftGap;
-				let nextGap = glyphData[char].rightGap;
+				let width = data[char].width;
+				let prevGap = data[char].leftGap;
+				let nextGap = data[char].rightGap;
 				
 				ctx.save();
 				ctx.globalCompositeOperation = 'difference';
@@ -809,34 +781,102 @@ function FontTexture() {
 			}
 		}
 		//*/
-		
-		/*
-		// Check alpha channel range
-		let min = 255, max = 0;
-		let imageData = ctx.getImageData(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
-		for(let i = 0; i < imageData.data.length; i += 4)
-		{
-			let alpha = imageData.data[i + 3];
-			if(alpha === 0.0) continue;
-			min = Math.min(alpha, min);
-			max = Math.max(alpha, max);
-		}
-		//*/
 	}, []);
 	
 	
 	
 	const downloadCallback = useCallback(() => {
-		const filename = 'Font Texture';
+		const filename = `Font Texture - ${MODE[0] + MODE.substring(1).toLowerCase()}`;
 		
-		let script = `#define TEXTURE_INTER "e8a04684-47f6-7a26-5cee-6f839de708eb"
-#define TEXTURE_EIGHT "876a12ca-928e-baf1-a35b-f3aab5db95bc"
-#define TEXTURE_SIZE ${TEXTURE_SIZE}.
-#define FONT_SIZE ${FONT_SIZE}.
-#define CELL_SIZE ${CELL_SIZE}.
-#define COLUMN_SIZE ${columnWidth}
-#define GAP_WIDTH ${gapWidth}
-
+		let prefix = 'NT4_Font';
+		
+		let writes = Characters.map(glyph => {
+			let metrics = data[glyph];
+			if(!metrics || !metrics.width) console.error('No data on "' + glyph + '"');
+			
+			let specs = [
+				metrics.width,
+				metrics.leftGap,
+				metrics.rightGap,
+				metrics.textureX,
+				metrics.textureY,
+			];
+			
+			if(glyph == '"') glyph = '\\"';
+			else if(glyph == '\\') glyph = '\\\\';
+			
+			// return `llLinksetDataWrite("${prefix}_${glyph}", "${JSON.stringify(specs)}");`
+			return `llLinksetDataWrite("${prefix}_${glyph}", llList2Json(JSON_ARRAY, [${specs.join(', ')}]));`
+		});
+		
+		let buckets = [];
+		let bucket = [
+			`llLinksetDataWrite("${prefix}", "${FONT}");`,
+			`llLinksetDataWrite("${prefix}_Texture", "e8a04684-47f6-7a26-5cee-6f839de708eb");`,
+			`llLinksetDataWrite("${prefix}_TextureSize", "${TEXTURE_SIZE}");`,
+			`llLinksetDataWrite("${prefix}_FontSize", "${FONT_SIZE}");`,
+			`llLinksetDataWrite("${prefix}_CellSize", "${CELL_SIZE}");`,
+			`llLinksetDataWrite("${prefix}_ColumnSize", "${columnWidth}");`,
+		];
+		
+		if(Characters.includes('0'))
+		{
+			let maxWidth = 0, minLeft = columnWidth, minRight = columnWidth;
+			for(let char of '012345689')
+			{
+				maxWidth = Math.max(maxWidth, data[char].width);
+				minLeft = Math.min(minLeft, data[char].leftGap);
+				minRight = Math.min(minRight, data[char].rightGap);
+			}
+			
+			let width = Math.max(25, maxWidth); // Should be width of an EN whitespace or widest figure
+			let specs = [width, minLeft, minRight];
+			
+			// return `llLinksetDataWrite(prefix + "_TabFigs", "${JSON.stringify(specs)}");`;
+			bucket.push(`llLinksetDataWrite("${prefix}_TabFigs", llList2Json(JSON_ARRAY, [${specs.join(', ')}]));`)
+		}
+		
+		// buckets.push(bucket);
+		// bucket = [];
+		
+		for(let iterator = 0, total = writes.length; iterator < total; ++iterator)
+		{
+			bucket.push(writes[iterator]);
+			if(iterator && iterator % 200 == 0)
+			{
+				buckets.push(bucket);
+				bucket = [];
+			}
+		}
+		buckets.push(bucket);
+		
+		let scripts = buckets.map((bucket, index) => `
+default
+{
+	state_entry()
+	{
+		${index == 0? // First bucket
+		`string previousFont = llLinksetDataRead("${prefix}");
+		llLinksetDataDeleteFound("^${prefix}", "");
+		if(previousFont) llOwnerSay("Removed previous font data '" + previousFont + "'");` : ''}
+		
+		${index != 0? // Not first
+		`while(llLinksetDataRead("NT4_Setup_${index}") == "") llSleep(1/45.); llLinksetDataDelete("NT4_Setup_${index}");` : ''}
+		
+		${bucket.join('\n\t\t')}
+		
+		llOwnerSay(${index < buckets.length - 1? // Done messages
+			`"Font data ${index + 1} of ${buckets.length}"`:
+			`"Font data ${index + 1} of ${buckets.length}; Finished installing font '${FONT}'; LinksetData only has " + (string)llRound(llLinksetDataAvailable() / 1024) + "KB available now"`
+		});
+		
+		${index < buckets.length - 1? // Last bucket
+		`llLinksetDataWrite("NT4_Setup_${index + 1}", "ready");` : ''}
+		llRemoveInventory(llGetScriptName());
+	}
+}
+`);
+/*
 // Convert character into an integer lookup index
 integer GlyphIndex(string char)
 {
@@ -858,9 +898,9 @@ ${(() => {
 	let maxWidth = 0, minLeft = columnWidth, minRight = columnWidth;
 	for(let char of '012345689')
 	{
-		maxWidth = Math.max(maxWidth, glyphData[char].width);
-		minLeft = Math.min(minLeft, glyphData[char].leftGap);
-		minRight = Math.min(minRight, glyphData[char].rightGap);
+		maxWidth = Math.max(maxWidth, data[char].width);
+		minLeft = Math.min(minLeft, data[char].leftGap);
+		minRight = Math.min(minRight, data[char].rightGap);
 	}
 	let width = Math.max(25, maxWidth); // Should be width of an EN whitespace or widest figure
 	let startIndex = Characters.indexOf('0');
@@ -869,9 +909,9 @@ ${(() => {
 })()}
 ${(() => {
 	let condition = Characters.map((glyph, index) => {
-		let data = glyphData[glyph];
-		if(!data || !data.width) console.error('No data on "' + glyph + '"');
-		return `if(index == ${index}) return <${+data.width.toFixed(7)}, ${+data.leftGap.toFixed(7)}, ${+data.rightGap.toFixed(7)}>;`
+		let metrics = data[glyph];
+		if(!metrics || !metrics.width) console.error('No data on "' + glyph + '"');
+		return `if(index == ${index}) return <${+metrics.width.toFixed(7)}, ${+metrics.leftGap.toFixed(7)}, ${+metrics.rightGap.toFixed(7)}>;`
 	});
 	let lines = [];
 	for(let iterator = 0; iterator < condition.length;)
@@ -901,110 +941,57 @@ vector GlyphCoords(integer index)
 		0
 	>;
 }
-`;
-
-
-/*
-vector GlyphCoords(integer index)
-{
-${(() => {
-	let condition = Characters.map((glyph, index) => {
-		let data = glyphData[glyph];
-		return `if(index == ${index}) return <${+data.x.toFixed(3)}, ${+data.y.toFixed(3)}, 0>;`
-	});
-	let lines = [];
-	for(let iterator = 0; iterator < condition.length;)
-	{
-		let line = [
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-			condition[iterator++],
-		].filter(Boolean);
-		lines.push(`\t${line.join(' ')}`);
-	}
-	return lines.join('\n');
-})()}
-	return ZERO_VECTOR;
-}
-
-// TODO: different Glyph* functions that allow you to get glyph data in parts, since rotation alone might not be eough
-vector GlyphCoordinates(integer index, float width)
-{
-	// let x = columnWidth * 0.5 + columnWidth * a;
-	// let y = CELL_SIZE * b + CELL_SIZE * 0.5;
-	// let index = b + a * ROWS;
-	
-	integer column = index / 32;
-	integer row = index % 32;
-	return <
-		COLUMN_SIZE * column + COLUMN_SIZE * 0.5 - width/2,
-		CELL_SIZE * row + CELL_SIZE * 0.5,
-		0
-	>;
-}
-
-rotation Glyphs(string Glyph)
-{
-${(() => {
-	let checks = Characters.map((glyph, index) => {
-		// let [x, y, width, leftGap, rightGap] = glyphData[glyph];
-		let data = glyphData[glyph];
-		if(glyph == '"') glyph = '\\"';
-		else if(glyph == '\\') glyph = '\\\\';
-		return `if(Glyph == "${glyph}") return <${index}, ${data.width.toFixed(2)}, ${data.leftGap.toFixed(2)}, ${data.rightGap.toFixed(2)}>;`
-		// return `if(Glyph == "${glyph}") return <${data[0].toFixed(2)}, ${data[1]}, ${data[2].toFixed(2)}>;`
-	});
-	let lines = [];
-	for(let iterator = 0; iterator < checks.length; iterator += 3)
-	{
-		let a = checks[iterator + 0];
-		let b = checks[iterator + 1] || '';
-		let c = checks[iterator + 2] || '';
-		lines.push(`\t${a} ${b} ${c}`);
-	}
-	return lines.join('\n');
-})()}
-	return <0, 0, 0, 0>;
-}
-
-*/
-		// console.log(lsl);
+`;*/
 		
-		var downloadAnchor = document.createElement('a');
-		downloadAnchor.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(script);
-		downloadAnchor.setAttribute('download', `NexText4.0.lsl`);
-		downloadAnchor.click();
-		
+		let step = 1;
+		for(let script of scripts)
+		{
+			var downloadAnchor = document.createElement('a');
+			downloadAnchor.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(script);
+			downloadAnchor.setAttribute('download', `NexText4 Font Setup ${step++}.lsl`);
+			downloadAnchor.click();
+		}
 		
 		
 		let ctx = root.current.getContext('2d');
 		let imageData = ctx.getImageData(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
 		
-		// Brute force set pixels to pure white color to avoid linear scaling to black transparent pixels
 		for(let [rx, ry, rw, rh] of UncoloredRects)
 		{
-			for(let i = 0; i < imageData.data.length; i += 4)
+			let cx = rx - 4, cy = ry - 4;
+			let cw = rw + 6, ch = rh + 6;
+			for(let x = cx; x < cx+cw; ++x)
 			{
-				let p = i / 4;
-				let x = p % TEXTURE_WIDTH;
-				let y = Math.floor(p / TEXTURE_WIDTH);
-				if(x >= rx && x <= rx+rw && y >= ry && y <= ry+rh)
+				for(let y = cy; y < cy+ch; ++y)
 				{
-					imageData.data[i + 0] = 255;
-					imageData.data[i + 1] = 255;
-					imageData.data[i + 2] = 255;
-					// imageData.data[i + 3] = 255;
+					if(rx <= x && x < rx+rw && ry <= y && y < ry+rh) continue;
+					let index = (x + y * imageData.width) * 4;
+					imageData.data[index + 0] = 255;
+					imageData.data[index + 1] = 255;
+					imageData.data[index + 2] = 255;
 				}
 			}
 		}
 		
-		// for(let i = 0; i < imageData.data.length; i += 4)
+		// for(let char of Characters)
 		// {
-		// 	imageData.data[i + 0] = 255;
-		// 	imageData.data[i + 1] = 255;
-		// 	imageData.data[i + 2] = 255;
+		// 	let metrics = data[char];
+		// }
+		
+		// Brute force set pixels to pure white color to avoid linear scaling to black transparent pixels
+		// for(let [rx, ry, rw, rh] of UncoloredRects)
+		// {
+		// 	for(let i = 0; i < imageData.data.length; i += 4)
+		// 	{
+		// 		let x = (p/4) % TEXTURE_WIDTH;
+		// 		let y = Math.floor((p/4) / TEXTURE_WIDTH);
+		// 		if(x >= rx && x <= rx+rw && y >= ry && y <= ry+rh)
+		// 		{
+		// 			imageData.data[i + 0] = 255;
+		// 			imageData.data[i + 1] = 255;
+		// 			imageData.data[i + 2] = 255;
+		// 		}
+		// 	}
 		// }
 		
 		ctx.putImageData(imageData, 0, 0);
